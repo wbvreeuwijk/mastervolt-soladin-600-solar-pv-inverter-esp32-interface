@@ -20,21 +20,14 @@
 #define SLEEP_TIME 10000000  				//ESP32 will sleep for 10 seconds
 
 /* Put your SSID & Password */
-const char *ssid = "ssid_goes_here";        // Enter SSID here
-const char *password = "password"; 			//Enter Password here
-
-/* Put IP Address details */
-IPAddress local_ip(192, 168, 0, 10);		// Device IP address
-IPAddress gateway(192, 168, 0, 1);			// Device Gateway
-IPAddress subnet(255, 255, 255, 0);			// Device Subnet
-IPAddress primaryDNS(8, 8, 8, 8);    		// Optional
-IPAddress secondaryDNS(8, 8, 4, 4);  		// Optional
+const char *ssid = "<SSID>>";        // Enter SSID here
+const char *password = "<PASSWORD>"; 			//Enter Password here
 
 // mqtt client
 
-const char *mqtt_server = "192.168.0.2";	// MQTT Server Address here
-const char *mqtt_user = "user_goes_here";	// MQTT Username here
-const char *mqtt_password = "password";		// MQTT Password here
+const char *mqtt_server = "<MQTTSERVER>";	// MQTT Server Address here
+const char *mqtt_user = "<MQTTUSER>";	// MQTT Username here
+const char *mqtt_password = "<MQTTPASSWORD>";		// MQTT Password here
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -76,8 +69,21 @@ void uploaddata(void) {
                 client.publish("/home/solarpv/alarmflag", String(sol.Flag).c_str(), true);
             }
             else{
-                TRACE("Sending MQTT Messages\n");
-                // upload data to the mqtt client
+                TRACE("Build CSV Object");
+                String data = "pvvolt="+String(float(sol.PVvolt)/10);
+                data += ";pvamp="+String(float(sol.PVamp)/100);
+                data += ";gridvolt=" + String(sol.Gridvolt);
+                data += ";gridpower=" + String(sol.Gridpower);
+                data += ";gridfrequency=" + String(float(sol.Gridfreq)/100);
+                data += ";totalpower=" + String(float(sol.Totalpower)/100);
+                data += ";devicetemp=" + String(sol.DeviceTemp);
+                char timeStr[14];
+                sprintf(timeStr, "%04d:",(sol.TotalOperaTime/60));
+                data += ";operationtime=" + String(timeStr);
+                data += ";alarmflag=" + String(sol.Flag);
+                TRACE("Sending CSV Messages\n");
+                client.publish("home/solarpv", data.c_str());
+                /* upload data to the mqtt client
                 client.publish("/home/solarpv/pvvolt", String(float(sol.PVvolt)/10).c_str(), true);
                 client.publish("/home/solarpv/pvamp", String(float(sol.PVamp)/100).c_str(), true);
                 client.publish("/home/solarpv/gridvolt", String(sol.Gridvolt).c_str(), true);
@@ -89,6 +95,7 @@ void uploaddata(void) {
                 sprintf(timeStr, "%04d:",(sol.TotalOperaTime/60));
                 client.publish("/home/solarpv/operationtime", String(timeStr).c_str(), true);
                 client.publish("/home/solarpv/alarmflag", String(sol.Flag).c_str(), true);
+                */
             }
         }
     }
@@ -96,18 +103,13 @@ void uploaddata(void) {
 
 void setup() {
     Serial.begin(115200);
-
+    
     //Set sleep timer
 	esp_sleep_enable_timer_wakeup(SLEEP_TIME);
 
     // Connect to WiFi
     TRACE("\nConnecting to Wifi\n");
     WiFi.mode(WIFI_STA);
-
-    if (!WiFi.config(local_ip, gateway, subnet, primaryDNS, secondaryDNS))
-    {
-        TRACE("Wifi Failed to configure\n");
-    }
 
     WiFi.begin(ssid, password);
 
@@ -158,5 +160,5 @@ void loop() {
     uploaddata();
 
     //Go to sleep now
-	esp_deep_sleep_start();
+	delay(10000);
 }
